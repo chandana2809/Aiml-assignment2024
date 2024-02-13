@@ -1,0 +1,85 @@
+import numpy as np
+import heapq
+
+class Node:
+    def _init_(self, state, parent=None, g=0, h=0):
+        self.state = state
+        self.parent = parent
+        self.g = g  # Actual cost
+        self.h = h  # Heuristic cost
+
+    def f(self):
+        return self.g + self.h
+
+class AStar:
+    def _init_(self, start_state, goal_state):
+        self.start_node = Node(start_state)
+        self.goal_state = goal_state
+
+    def heuristic(self, state):
+        # Define your heuristic function here
+        # For example, Manhattan distance for 8-puzzle
+        distance = 0
+        for i in range(len(state)):
+            for j in range(len(state[i])):
+                if state[i][j] != self.goal_state[i][j]:
+                    distance += 1
+        return distance
+
+    def get_children(self, node):
+        # Generate children by swapping blank space with adjacent tiles
+        children = []
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # Right, Left, Down, Up
+
+        blank_pos = np.argwhere(node.state == 0)[0]
+        for direction in directions:
+            new_pos = blank_pos + direction
+            if 0 <= new_pos[0] < len(node.state) and 0 <= new_pos[1] < len(node.state[0]):
+                new_state = np.copy(node.state)
+                new_state[blank_pos[0], blank_pos[1]] = new_state[new_pos[0], new_pos[1]]
+                new_state[new_pos[0], new_pos[1]] = 0
+                children.append(Node(new_state, node, node.g + 1, self.heuristic(new_state)))
+        return children
+
+    def solve(self):
+        open_list = []
+        closed_set = set()
+
+        heapq.heappush(open_list, (self.start_node.f(), id(self.start_node), self.start_node))
+
+        while open_list:
+            _, _, current_node = heapq.heappop(open_list)
+
+            if np.array_equal(current_node.state, self.goal_state):
+                path = []
+                while current_node:
+                    path.append(current_node.state)
+                    current_node = current_node.parent
+                return path[::-1]
+
+            closed_set.add(id(current_node))
+
+            children = self.get_children(current_node)
+            for child in children:
+                if id(child) not in closed_set:
+                    heapq.heappush(open_list, (child.f(), id(child), child))
+
+        return None
+
+# Example usage:
+start_state = np.array([[1, 2, 3],
+                        [0, 4, 6],
+                        [7, 5, 8]])
+
+goal_state = np.array([[1, 2, 3],
+                       [4, 5, 6],
+                       [7, 8, 0]])
+
+astar = AStar(start_state, goal_state)
+path = astar.solve()
+if path:
+    for i, state in enumerate(path):
+        print(f"Step {i+1}:")
+        print(state)
+else:
+    print("No solution found.")
